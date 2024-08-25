@@ -1,0 +1,23 @@
+{
+  "name": "conoha-wallpaper-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsx build.ts",
+    "start": "node dist/main.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "esbuild": "^0.23.1",
+    "tsx": "^4.18.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "commander": "^12.1.0"
+  }
+}
