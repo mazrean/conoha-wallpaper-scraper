@@ -5,9 +5,10 @@ import { z } from "zod";
 import * as cheerio from "cheerio";
 import { Agent } from "undici";
 import { createWriteStream } from "fs";
+import path from "path";
 
 program.option(
-  "-s, --size <1080x1920|1242x2688|2560x1440|1280x800>",
+  "--size <1080x1920|1242x2688|2560x1440|1280x800>",
   "Size of wallpaper",
   "2560x1440"
 );
@@ -18,7 +19,7 @@ program.option(
 );
 program.option(
   "--ignore-file <ignore list>",
-  "Ignore list file path relative to destination directory(default: ignore.txt)"
+  "Ignore list file path(default: ignore.txt)"
 );
 program.option("--dry-run", "Dry run", false);
 program.parse();
