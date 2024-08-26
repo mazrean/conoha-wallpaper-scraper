@@ -1,58 +1,205 @@
+import fs from "fs/promises";
+import https from "https";
+import { program } from "commander";
 import * as cheerio from "cheerio";
 import { Agent } from "undici";
+import { createWriteStream } from "fs";
 
-const $ = await cheerio.fromURL("https://conoha.mikumo.com/wallpaper/", {
-  requestOptions: {
-    method: "GET",
-    dispatcher: new Agent({
-      connect: {
-        // 中間証明書が設定されておらずTLSでエラーが発生するため、
-        // rejectUnauthorized: falseで証明書検証を無効化
-        rejectUnauthorized: false,
-      },
-    }),
-  },
-});
+program.option(
+  "-s, --size <1080x1920|1242x2688|2560x1440|1280x800>",
+  "Size of wallpaper",
+  "2560x1440"
+);
+program.option(
+  "-d, --dest <destination directory>",
+  "Destination directory",
+  "dest"
+);
+program.option(
+  "--ignore-file <ignore list>",
+  "Ignore list(default: <destination directory>/ignore.txt)"
+);
+program.option("--dry-run", "Dry run", false);
+program.parse();
+const options: {
+  size: string;
+  dest: string;
+  dryRun: boolean;
+  ignoreFile: string | undefined;
+} = program.opts();
+if (!options.ignoreFile) {
+  options.ignoreFile = `${options.dest}/ignore.txt`;
+}
 
-const wallpapers = $(".listWallpaper_item")
-  .toArray()
-  .map((wallpaper) => {
-    const wallpapers = $(wallpaper).find("a").toArray();
+type Wallpaper = {
+  id: string;
+  url: string;
+};
 
-    const wallpaperObject: {
-      smartPhone1080x1920: string | null;
-      smartPhone1242x2688: string | null;
-      pc2560x1440: string | null;
-      pc1280x800: string | null;
-    } = {
-      smartPhone1080x1920: null,
-      smartPhone1242x2688: null,
-      pc2560x1440: null,
-      pc1280x800: null,
-    };
-    for (const wallpaperElement of wallpapers) {
-      const $wallpaper = $(wallpaperElement);
-      const href = $wallpaper.attr("href");
-      if (!href) continue;
+const scrape = async (size: string) => {
+  const $ = await cheerio.fromURL("https://conoha.mikumo.com/wallpaper/", {
+    requestOptions: {
+      method: "GET",
+      dispatcher: new Agent({
+        connect: {
+          // 中間証明書が設定されておらずTLSでエラーが発生するため、
+          // rejectUnauthorized: falseで証明書検証を無効化
+          rejectUnauthorized: false,
+        },
+      }),
+    },
+  });
 
-      if (href.includes("1080x1920")) {
-        wallpaperObject.smartPhone1080x1920 = href;
-      }
-      if (href.includes("1242x2688")) {
-        wallpaperObject.smartPhone1242x2688 = href;
-      }
-      if (href.includes("2560x1440")) {
-        wallpaperObject.pc2560x1440 = href;
-      }
-      if (href.includes("1280x800")) {
-        wallpaperObject.pc1280x800 = href;
-      }
+  const createID = (thumbnailURL: string) =>
+    thumbnailURL
+      .replace(/^(https:\/\/conoha\.mikumo\.com\/wp\-content\/uploads\/)/, "")
+      .replace(/(\.jpg)$/, "")
+      .replace("/thumbnail", "")
+      .replace(/(-thumb)$/, "")
+      .replaceAll("/", "-");
+
+  const wallpapers = $(".listWallpaper_item")
+    .toArray()
+    .map((wallpaper) => {
+      const $wallpaper = $(wallpaper);
+
+      const thumbnailUrl = $wallpaper.find("img").attr("src");
+      if (!thumbnailUrl) return;
+      const id = createID(thumbnailUrl);
+
+      const wallpaperUrls = $wallpaper
+        .find("a")
+        .toArray()
+        .map((a) => $(a).attr("href") ?? "")
+        .filter(
+          (href) =>
+            href &&
+            (href.includes(size) || href.includes(size.replace("x", "_")))
+        );
+      if (wallpaperUrls.length === 0) return;
+
+      return {
+        id,
+        url: wallpaperUrls[0],
+      };
+    })
+    .filter(
+      (wallpaper) =>
+        wallpaper && Object.values(wallpaper).some((value) => value !== null)
+    ) as Wallpaper[];
+
+  return wallpapers;
+};
+
+const loadDest = async (dest: string) => {
+  try {
+    const stat = await fs.stat(dest);
+    if (!stat.isDirectory()) throw new Error("dist is not a directory");
+  } catch {
+    console.error(`Directory not found: ${dest}`);
+
+    if (!options.dryRun) {
+      await fs.mkdir(dest, {
+        recursive: true,
+      });
     }
 
-    return wallpaperObject;
-  })
-  .filter((wallpaper) =>
-    Object.values(wallpaper).some((value) => value !== null)
-  );
+    return [];
+  }
 
-console.log(wallpapers);
+  return await fs.readdir(dest);
+};
+
+const loadIgnoreList = async (ignoreFile: string, wallpapers: Wallpaper[]) => {
+  try {
+    const stat = await fs.stat(ignoreFile);
+    if (!stat.isDirectory()) throw new Error("dist is not a directory");
+  } catch {
+    console.info(`Create ignore file: ${ignoreFile}`);
+
+    if (!options.dryRun) {
+      const contents = wallpapers
+        .map((wallpaper) => `# ${wallpaper.id}\n`)
+        .join("");
+      await fs.writeFile(
+        ignoreFile,
+        "# ConoHa Wallpaper Scraper Ignore List\n" + contents
+      );
+    }
+
+    return [];
+  }
+
+  try {
+    const ignoreList = await fs.readFile(ignoreFile, "utf-8");
+    return ignoreList
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .filter((line) => !line.startsWith("#"));
+  } catch {
+    return [];
+  }
+};
+
+const download = (uri: string, filename: string) => {
+  return new Promise<void>((resolve, reject) => {
+    const url = new URL(uri);
+    return https
+      .request(
+        {
+          ...url,
+          hostname: url.host,
+          path: url.pathname,
+          rejectUnauthorized: false,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+          },
+        },
+        (res) => {
+          res
+            .pipe(createWriteStream(filename))
+            .on("close", resolve)
+            .on("error", reject);
+        }
+      )
+      .end();
+  });
+};
+
+const downloadNewWallpapers = async (
+  wallpapers: Wallpaper[],
+  ignoreList: string[],
+  dest: string
+) => {
+  const distFiles = await loadDest(dest);
+  const distFileMap = new Map(distFiles.map((file) => [file, true]));
+
+  const ignoreMap = new Map(ignoreList.map((file) => [file, true]));
+
+  for (const wallpaper of wallpapers) {
+    if (ignoreMap.has(wallpaper.id)) {
+      continue;
+    }
+
+    const { id, url } = wallpaper;
+    const filename = `${id}.jpg`;
+    if (distFileMap.has(filename)) {
+      continue;
+    }
+
+    console.log(`Download: ${filename}`);
+    if (options.dryRun) continue;
+
+    console.log(`Download: ${url}`);
+    download(url, `${dest}/${filename}`);
+  }
+};
+
+const wallpapers = await scrape(options.size);
+
+downloadNewWallpapers(
+  wallpapers,
+  await loadIgnoreList(options.ignoreFile, wallpapers),
+  options.dest
+);
