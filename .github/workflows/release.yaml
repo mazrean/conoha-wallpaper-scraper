@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  release:
+    types:
+      - created
+      - published
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  publish:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ./package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NODE_ENV: production
+      - name: Upload Release Asset
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} dist/main.mjs --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
