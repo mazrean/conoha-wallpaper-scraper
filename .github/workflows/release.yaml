@@ -3,16 +3,17 @@ name: Release
 on:
   release:
     types:
-      - created
       - published
 
 env:
-  NODE_VERSION: "22"
+  NODE_VERSION: '22'
 
 jobs:
   publish:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4.1.7
       - uses: actions/setup-node@v4
