@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import https from "https";
 import { program } from "commander";
+import { z } from "zod";
 import * as cheerio from "cheerio";
 import { Agent } from "undici";
 import { createWriteStream } from "fs";
@@ -17,37 +18,35 @@ program.option(
 );
 program.option(
   "--ignore-file <ignore list>",
-  "Ignore list(default: <destination directory>/ignore.txt)"
+  "Ignore list file path relative to destination directory(default: ignore.txt)"
 );
 program.option("--dry-run", "Dry run", false);
 program.parse();
-const options: {
-  size: string;
-  dest: string;
-  dryRun: boolean;
-  ignoreFile: string | undefined;
-} = program.opts();
-if (!options.ignoreFile) {
-  options.ignoreFile = `${options.dest}/ignore.txt`;
-}
 
-type Size = "1080x1920" | "1242x2688" | "2560x1440" | "1280x800";
-if (
-  options.size !== "1080x1920" &&
-  options.size !== "1242x2688" &&
-  options.size !== "2560x1440" &&
-  options.size !== "1280x800"
-) {
-  console.error(`Invalid size: ${options.size}`);
+const Size = z
+  .enum(["1080x1920", "1242x2688", "2560x1440", "1280x800"])
+  .default("2560x1440");
+const Option = z.object({
+  size: Size,
+  dest: z.string().default("dest"),
+  ignoreFile: z.string().default("./ignore.txt"),
+  dryRun: z.boolean().default(false),
+});
+type Option = z.infer<typeof Option>;
+
+const result = Option.safeParse(program.opts());
+if (!result.success) {
+  console.error(result.error.format());
   process.exit(1);
 }
+const options = result.data;
 
 type Wallpaper = {
   id: string;
   url: string;
 };
 
-const scrape = async (size: Size) => {
+const scrape = async (size: z.infer<typeof Size>) => {
   const $ = await cheerio.fromURL("https://conoha.mikumo.com/wallpaper/", {
     requestOptions: {
       method: "GET",
