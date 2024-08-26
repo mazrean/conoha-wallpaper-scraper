@@ -108,9 +108,11 @@ const loadDest = async (dest: string) => {
     const stat = await fs.stat(dest);
     if (!stat.isDirectory()) throw new Error("dist is not a directory");
   } catch {
-    console.error(`Directory not found: ${dest}`);
+    if (options.dryRun) {
+      console.error(`Directory not found: ${dest}`);
+    } else {
+      console.info(`Create directory: ${dest}`);
 
-    if (!options.dryRun) {
       await fs.mkdir(dest, {
         recursive: true,
       });
@@ -135,7 +137,8 @@ const loadIgnoreList = async (ignoreFile: string, wallpapers: Wallpaper[]) => {
         .join("");
       await fs.writeFile(
         ignoreFile,
-        "# ConoHa Wallpaper Scraper Ignore List\n" + contents
+        "# ConoHa Wallpaper Scraper Ignore List\n" + contents,
+        "utf-8"
       );
     }
 
@@ -182,10 +185,10 @@ const download = (uri: string, filename: string) => {
 const downloadNewWallpapers = async (
   wallpapers: Wallpaper[],
   ignoreList: string[],
+  destFiles: string[],
   dest: string
 ) => {
-  const distFiles = await loadDest(dest);
-  const distFileMap = new Map(distFiles.map((file) => [file, true]));
+  const distFileMap = new Map(destFiles.map((file) => [file, true]));
 
   const ignoreMap = new Map(ignoreList.map((file) => [file, true]));
 
@@ -209,9 +212,11 @@ const downloadNewWallpapers = async (
 };
 
 const wallpapers = await scrape(options.size);
+const distFiles = await loadDest(options.dest);
 
 downloadNewWallpapers(
   wallpapers,
   await loadIgnoreList(options.ignoreFile, wallpapers),
+  distFiles,
   options.dest
 );
