@@ -31,12 +31,23 @@ if (!options.ignoreFile) {
   options.ignoreFile = `${options.dest}/ignore.txt`;
 }
 
+type Size = "1080x1920" | "1242x2688" | "2560x1440" | "1280x800";
+if (
+  options.size !== "1080x1920" &&
+  options.size !== "1242x2688" &&
+  options.size !== "2560x1440" &&
+  options.size !== "1280x800"
+) {
+  console.error(`Invalid size: ${options.size}`);
+  process.exit(1);
+}
+
 type Wallpaper = {
   id: string;
   url: string;
 };
 
-const scrape = async (size: string) => {
+const scrape = async (size: Size) => {
   const $ = await cheerio.fromURL("https://conoha.mikumo.com/wallpaper/", {
     requestOptions: {
       method: "GET",
