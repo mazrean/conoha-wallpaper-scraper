@@ -55,6 +55,7 @@ const scrape = async (size: string) => {
       .replace(/^(https:\/\/conoha\.mikumo\.com\/wp\-content\/uploads\/)/, "")
       .replace(/(\.jpg)$/, "")
       .replace("/thumbnail", "")
+      .replace("-thumbnail", "")
       .replace(/(-thumb)$/, "")
       .replaceAll("/", "-");
 
@@ -113,7 +114,7 @@ const loadDest = async (dest: string) => {
 const loadIgnoreList = async (ignoreFile: string, wallpapers: Wallpaper[]) => {
   try {
     const stat = await fs.stat(ignoreFile);
-    if (!stat.isDirectory()) throw new Error("dist is not a directory");
+    if (!stat.isFile()) throw new Error("ignore file is not a file");
   } catch {
     console.info(`Create ignore file: ${ignoreFile}`);
 
