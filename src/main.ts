@@ -5,6 +5,7 @@ import { z } from 'zod'
 import * as cheerio from 'cheerio'
 import { Agent } from 'undici'
 import { createWriteStream } from 'fs'
+import path from 'path'
 
 program.option(
   '--size <1080x1920|1242x2688|2560x1440|1280x800>',
@@ -181,6 +182,9 @@ const download = (uri: string, filename: string) => {
   })
 }
 
+const sleep = (time: number) =>
+  new Promise(resolve => setTimeout(resolve, time))
+
 const downloadNewWallpapers = async (
   wallpapers: Wallpaper[],
   ignoreList: string[],
@@ -201,12 +205,13 @@ const downloadNewWallpapers = async (
     if (distFileMap.has(filename)) {
       continue
     }
+    const filePath = path.join(dest, filename)
 
-    console.log(`Download: ${filename}`)
+    console.log(`Download: ${id}(${url}) -> ${filePath}`)
     if (options.dryRun) continue
 
-    console.log(`Download: ${url}`)
-    download(url, `${dest}/${filename}`)
+    await download(url, filePath)
+    await sleep(500)
   }
 }
 
