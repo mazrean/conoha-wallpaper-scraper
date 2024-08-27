@@ -3,7 +3,7 @@
 [美雲このはの壁紙](https://conoha.mikumo.com/wallpaper/)を特定ディレクトリにダウンロードするスクリプトです。
 各種OSの壁紙のスライドショー機能と組み合わせて、美雲このはのスライドショーを壁紙に設定できます。
 
-> [!CAUTION]。
+> [!CAUTION]
 > 美雲このはおよび、このスクリプトを使用してダウンロードできる壁紙の著作権はGMO Internet Group, Inc.に帰属します。
 > 利用は[公式サイトの利用ガイドライン](https://conoha.mikumo.com/guideline/)に従って行ってください。
 >
