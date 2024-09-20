@@ -68,7 +68,7 @@ jobs:
           fail_on_error: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
-          eslint_flags: "--ignore-path .gitignore --max-warnings=0 --cache --cache-location ./node_modules/.cache/eslint ."
+          eslint_flags: "--ignore-pattern .gitignore --max-warnings=0 --cache --cache-location ./node_modules/.cache/eslint ."
   type_check:
     name: Type Check
     runs-on: ubuntu-latest
