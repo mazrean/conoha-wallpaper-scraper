@@ -23,6 +23,7 @@ wget -O - https://github.com/mazrean/conoha-wallpaper-scraper/releases/latest/do
 Windowsの場合はwgetの代わりに適宜ファイルをダウンロードし、Node.jsで実行してください。
 
 ダウンロード先のディレクトリは`--dest`オプションで指定できます。
+
 例) `./wallpapers`ディレクトリにダウンロードする場合
 ```bash
 wget -O - https://github.com/mazrean/conoha-wallpaper-scraper/releases/latest/download/main.mjs | node --input-type=module - --dest ./wallpapers
