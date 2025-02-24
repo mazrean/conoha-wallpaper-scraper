@@ -14,13 +14,13 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^22.13.4",
-    "@typescript-eslint/eslint-plugin": "^8.23.0",
-    "@typescript-eslint/parser": "^8.23.0",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
     "esbuild": "^0.25.0",
-    "eslint": "^9.19.0",
+    "eslint": "^9.21.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.3",
-    "prettier": "^3.4.2",
+    "prettier": "^3.5.2",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   },
