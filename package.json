@@ -13,10 +13,10 @@
   "license": "MIT",
   "description": "",
   "devDependencies": {
-    "@types/node": "^24.0.10",
+    "@types/node": "^24.0.13",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.32.1",
-    "esbuild": "^0.25.5",
+    "esbuild": "^0.25.6",
     "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.5.1",
