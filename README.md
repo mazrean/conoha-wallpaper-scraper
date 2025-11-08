@@ -1,5 +1,7 @@
 # ConoHa Wallpaper Scraper
 
+<a href="https://flatt.tech/oss/gmo/trampoline" target="_blank"><img src="https://flatt.tech/assets/images/badges/gmo-oss.svg" height="24px"/></a>
+
 [美雲このはの壁紙](https://conoha.mikumo.com/wallpaper/)を特定ディレクトリにダウンロードするスクリプトです。
 各種OSの壁紙のスライドショー機能と組み合わせて、美雲このはのスライドショーを壁紙に設定できます。
 
