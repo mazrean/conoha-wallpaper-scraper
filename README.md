@@ -1,7 +1,5 @@
 # ConoHa Wallpaper Scraper
 
-<a href="https://flatt.tech/oss/gmo/trampoline" target="_blank"><img src="https://flatt.tech/assets/images/badges/gmo-oss.svg" height="24px"/></a>
-
 [美雲このはの壁紙](https://conoha.mikumo.com/wallpaper/)を特定ディレクトリにダウンロードするスクリプトです。
 各種OSの壁紙のスライドショー機能と組み合わせて、美雲このはのスライドショーを壁紙に設定できます。
 
@@ -46,6 +44,12 @@ Options:
 `--ignore-file`オプションでダウンロードしない壁紙のリストを指定できます。
 リストは1行に1つの壁紙のidを記述することで、その壁紙をダウンロードしないようにできます。
 実際の使用例は[ignore.txt](./example/ignore.txt)を参照してください。
+
+## Support
+
+このプロジェクトでは、GMO FlattSecurity社の「GMO オープンソース開発者応援プログラム」の支援を受けて、「Takumi byGMO」によるセキュリティ診断を定期的に行っています。
+
+<a href="https://flatt.tech/oss/gmo/trampoline" target="_blank"><img src="https://flatt.tech/assets/images/badges/gmo-oss.svg" height="24px"/></a>
 
 ## 開発者向け情報
 
