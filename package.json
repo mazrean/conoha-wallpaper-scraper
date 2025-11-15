@@ -18,15 +18,15 @@
     "@typescript-eslint/parser": "^8.32.1",
     "esbuild": "^0.25.5",
     "eslint": "^9.29.0",
-    "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.5.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.6.2",
-    "tsx": "^4.20.3",
+    "tsx": "^4.20.6",
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "cheerio": "^1.1.0",
-    "commander": "^14.0.0",
+    "cheerio": "^1.1.2",
+    "commander": "^14.0.2",
     "zod": "^3.25.64"
   }
 }
