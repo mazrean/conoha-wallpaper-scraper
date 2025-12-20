@@ -66,9 +66,9 @@ const scrape = async (size: z.infer<typeof Size>) => {
       throw new Error(`Failed to fetch: ${statusCode}`)
     }
 
-    const chunks: Buffer[] = []
+    const chunks: Uint8Array[] = []
     for await (const chunk of body) {
-      chunks.push(Buffer.from(chunk))
+      chunks.push(chunk)
     }
 
     const html = Buffer.concat(chunks).toString('utf-8')
