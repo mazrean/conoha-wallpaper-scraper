@@ -56,64 +56,67 @@ const scrape = async (size: z.infer<typeof Size>) => {
     }
   })
 
-  const { statusCode, body } = await client.request({
-    path: '/wallpaper/',
-    method: 'GET'
-  })
-
-  if (statusCode !== 200) {
-    throw new Error(`Failed to fetch: ${statusCode}`)
-  }
-
-  let html = ''
-  for await (const chunk of body) {
-    html += chunk.toString()
-  }
-
-  client.close()
-
-  const $ = cheerio.load(html)
-
-  const createID = (thumbnailURL: string) =>
-    thumbnailURL
-      .replace(/^(https:\/\/conoha\.mikumo\.com\/wp-content\/uploads\/)/, '')
-      .replace(/(\.jpg)$/, '')
-      .replace('/thumbnail', '')
-      .replace('-thumbnail', '')
-      .replace(/(-thumb)$/, '')
-      .replaceAll('/', '-')
-
-  const wallpapers = $('.listWallpaper_item')
-    .toArray()
-    .map(wallpaper => {
-      const $wallpaper = $(wallpaper)
-
-      const thumbnailUrl = $wallpaper.find('img').attr('src')
-      if (!thumbnailUrl) return
-      const id = createID(thumbnailUrl)
-
-      const wallpaperUrls = $wallpaper
-        .find('a')
-        .toArray()
-        .map(a => $(a).attr('href') ?? '')
-        .filter(
-          href =>
-            href &&
-            (href.includes(size) || href.includes(size.replace('x', '_')))
-        )
-      if (wallpaperUrls.length === 0) return
-
-      return {
-        id,
-        url: wallpaperUrls[0]
-      }
+  try {
+    const { statusCode, body } = await client.request({
+      path: '/wallpaper/',
+      method: 'GET'
     })
-    .filter(
-      wallpaper =>
-        wallpaper && Object.values(wallpaper).some(value => value !== null)
-    ) as Wallpaper[]
 
-  return wallpapers
+    if (statusCode !== 200) {
+      throw new Error(`Failed to fetch: ${statusCode}`)
+    }
+
+    const chunks: Buffer[] = []
+    for await (const chunk of body) {
+      chunks.push(Buffer.from(chunk))
+    }
+
+    const html = Buffer.concat(chunks).toString('utf-8')
+    const $ = cheerio.load(html)
+
+    const createID = (thumbnailURL: string) =>
+      thumbnailURL
+        .replace(/^(https:\/\/conoha\.mikumo\.com\/wp-content\/uploads\/)/, '')
+        .replace(/(\.jpg)$/, '')
+        .replace('/thumbnail', '')
+        .replace('-thumbnail', '')
+        .replace(/(-thumb)$/, '')
+        .replaceAll('/', '-')
+
+    const wallpapers = $('.listWallpaper_item')
+      .toArray()
+      .map(wallpaper => {
+        const $wallpaper = $(wallpaper)
+
+        const thumbnailUrl = $wallpaper.find('img').attr('src')
+        if (!thumbnailUrl) return
+        const id = createID(thumbnailUrl)
+
+        const wallpaperUrls = $wallpaper
+          .find('a')
+          .toArray()
+          .map(a => $(a).attr('href') ?? '')
+          .filter(
+            href =>
+              href &&
+              (href.includes(size) || href.includes(size.replace('x', '_')))
+          )
+        if (wallpaperUrls.length === 0) return
+
+        return {
+          id,
+          url: wallpaperUrls[0]
+        }
+      })
+      .filter(
+        wallpaper =>
+          wallpaper && Object.values(wallpaper).some(value => value !== null)
+      ) as Wallpaper[]
+
+    return wallpapers
+  } finally {
+    client.close()
+  }
 }
 
 const loadDest = async (dest: string) => {
