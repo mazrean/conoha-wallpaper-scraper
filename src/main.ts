@@ -3,7 +3,7 @@ import https from 'https'
 import { program } from 'commander'
 import { z } from 'zod'
 import * as cheerio from 'cheerio'
-import { Agent } from 'undici'
+import { Client } from 'undici'
 import { createWriteStream } from 'fs'
 import path from 'path'
 
@@ -48,59 +48,75 @@ type Wallpaper = {
 }
 
 const scrape = async (size: z.infer<typeof Size>) => {
-  const $ = await cheerio.fromURL('https://conoha.mikumo.com/wallpaper/', {
-    requestOptions: {
-      method: 'GET',
-      dispatcher: new Agent({
-        connect: {
-          // 中間証明書が設定されておらずTLSでエラーが発生するため、
-          // rejectUnauthorized: falseで証明書検証を無効化
-          rejectUnauthorized: false
-        }
-      })
+  // 中間証明書が設定されておらずTLSでエラーが発生するため、
+  // rejectUnauthorized: falseで証明書検証を無効化
+  const client = new Client('https://conoha.mikumo.com', {
+    connect: {
+      rejectUnauthorized: false
     }
   })
 
-  const createID = (thumbnailURL: string) =>
-    thumbnailURL
-      .replace(/^(https:\/\/conoha\.mikumo\.com\/wp-content\/uploads\/)/, '')
-      .replace(/(\.jpg)$/, '')
-      .replace('/thumbnail', '')
-      .replace('-thumbnail', '')
-      .replace(/(-thumb)$/, '')
-      .replaceAll('/', '-')
-
-  const wallpapers = $('.listWallpaper_item')
-    .toArray()
-    .map(wallpaper => {
-      const $wallpaper = $(wallpaper)
-
-      const thumbnailUrl = $wallpaper.find('img').attr('src')
-      if (!thumbnailUrl) return
-      const id = createID(thumbnailUrl)
-
-      const wallpaperUrls = $wallpaper
-        .find('a')
-        .toArray()
-        .map(a => $(a).attr('href') ?? '')
-        .filter(
-          href =>
-            href &&
-            (href.includes(size) || href.includes(size.replace('x', '_')))
-        )
-      if (wallpaperUrls.length === 0) return
-
-      return {
-        id,
-        url: wallpaperUrls[0]
-      }
+  try {
+    const { statusCode, body } = await client.request({
+      path: '/wallpaper/',
+      method: 'GET'
     })
-    .filter(
-      wallpaper =>
-        wallpaper && Object.values(wallpaper).some(value => value !== null)
-    ) as Wallpaper[]
 
-  return wallpapers
+    if (statusCode !== 200) {
+      throw new Error(`Failed to fetch: ${statusCode}`)
+    }
+
+    const chunks: Uint8Array[] = []
+    for await (const chunk of body) {
+      chunks.push(chunk)
+    }
+
+    const html = Buffer.concat(chunks).toString('utf-8')
+    const $ = cheerio.load(html)
+
+    const createID = (thumbnailURL: string) =>
+      thumbnailURL
+        .replace(/^(https:\/\/conoha\.mikumo\.com\/wp-content\/uploads\/)/, '')
+        .replace(/(\.jpg)$/, '')
+        .replace('/thumbnail', '')
+        .replace('-thumbnail', '')
+        .replace(/(-thumb)$/, '')
+        .replaceAll('/', '-')
+
+    const wallpapers = $('.listWallpaper_item')
+      .toArray()
+      .map(wallpaper => {
+        const $wallpaper = $(wallpaper)
+
+        const thumbnailUrl = $wallpaper.find('img').attr('src')
+        if (!thumbnailUrl) return
+        const id = createID(thumbnailUrl)
+
+        const wallpaperUrls = $wallpaper
+          .find('a')
+          .toArray()
+          .map(a => $(a).attr('href') ?? '')
+          .filter(
+            href =>
+              href &&
+              (href.includes(size) || href.includes(size.replace('x', '_')))
+          )
+        if (wallpaperUrls.length === 0) return
+
+        return {
+          id,
+          url: wallpaperUrls[0]
+        }
+      })
+      .filter(
+        wallpaper =>
+          wallpaper && Object.values(wallpaper).some(value => value !== null)
+      ) as Wallpaper[]
+
+    return wallpapers
+  } finally {
+    client.close()
+  }
 }
 
 const loadDest = async (dest: string) => {
