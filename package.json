@@ -13,7 +13,7 @@
   "license": "MIT",
   "description": "",
   "devDependencies": {
-    "@types/node": "^24.0.10",
+    "@types/node": "^25.0.3",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.50.1",
     "esbuild": "^0.25.5",
