@@ -1,0 +1,9 @@
+[tools]
+# common
+apm = "latest"
+gh = "latest"
+
+# frontend (npm-based; pnpm and playwright intentionally omitted — add when E2E is needed)
+node = "lts"
+
+# Note: claude-code / codex / other coding-agent CLIs are intentionally NOT pinned per project policy.

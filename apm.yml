@@ -1,0 +1,8 @@
+name: conoha-wallpaper-scraper
+version: 0.1.0
+description: TypeScript scraper that pulls Conoha wallpaper assets and bundles them.
+
+dependencies:
+  apm:
+    - mazrean/apm-plackage/common
+    - mazrean/apm-plackage/frontend
