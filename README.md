@@ -33,11 +33,34 @@ wget -O - https://github.com/mazrean/conoha-wallpaper-scraper/releases/latest/do
 ```txt
 Options:
   --size <1080x1920|1242x2688|1280x800|2560x1440|1080x2400|1290x2796|2560x1600>  Size of wallpaper (default: "2560x1440")
+  --filter <all|springsummer|fallwinter|uniform|conohapiba|anzu>                 Category of wallpaper (default: "all")
   -d, --dest <destination directory>                                             Destination directory (default: "dest")
   --ignore-file <ignore list>                                                    Ignore list file path(default: ignore.txt)
   --dry-run                                                                      Dry run (default: false)
   -h, --help                                                                     display help for command
 ```
+
+## 壁紙の絞り込み
+
+`--filter`オプションで公式サイトの絞り込みタグと同じ単位で、ダウンロードする壁紙を絞り込めます。
+デフォルトは`all`で、すべての壁紙をダウンロードします。
+
+| 値 | 公式サイトの表記 |
+| --- | --- |
+| `all` | 全部かわいい(デフォルト) |
+| `springsummer` | 春～夏 |
+| `fallwinter` | 秋～冬 |
+| `uniform` | 制服このは |
+| `conohapiba` | このはぴば！ |
+| `anzu` | あんず一押し |
+
+例) 春～夏の壁紙のみダウンロードする場合
+```bash
+wget -O - https://github.com/mazrean/conoha-wallpaper-scraper/releases/latest/download/main.mjs | node --input-type=module - --filter springsummer
+```
+
+なお、壁紙によっては一部のサイズが用意されていません。
+`--size`で指定したサイズが存在しない壁紙はスキップされ、その旨が表示されます。
 
 ## ダウンロードしない壁紙の指定
 

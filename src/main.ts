@@ -18,6 +18,11 @@ program.option(
   '2560x1440'
 )
 program.option(
+  '--filter <all|springsummer|fallwinter|uniform|conohapiba|anzu>',
+  'Category of wallpaper',
+  'all'
+)
+program.option(
   '-d, --dest <destination directory>',
   'Destination directory',
   'dest'
@@ -42,8 +47,14 @@ const Size = z
   .default('2560x1440')
 type Size = z.infer<typeof Size>
 
+const Filter = z
+  .enum(['all', 'springsummer', 'fallwinter', 'uniform', 'conohapiba', 'anzu'])
+  .default('all')
+type Filter = z.infer<typeof Filter>
+
 const Option = z.object({
   size: Size,
+  filter: Filter,
   dest: z.string().default('dest'),
   ignoreFile: z.string().default('./ignore.txt'),
   dryRun: z.boolean().default(false)
@@ -70,6 +81,9 @@ const WallpaperDetail = z.record(
     url: z.string()
   })
 )
+
+// 壁紙一覧の各要素が持つdata-categoriesの中身
+const WallpaperCategories = z.array(z.string())
 
 const parseJSON = (value: string | undefined): unknown => {
   if (!value) return undefined
@@ -118,7 +132,7 @@ const fetchText = async (uri: string) => {
   return Buffer.concat(chunks).toString('utf-8')
 }
 
-const scrape = async (size: Size) => {
+const scrape = async (size: Size, filter: Filter) => {
   const html = await fetchText(new URL(wallpaperPath, baseURL).href)
   const $ = cheerio.load(html)
 
@@ -143,6 +157,13 @@ const scrape = async (size: Size) => {
       const thumbnailURL = $wallpaper.attr('data-thumbnail')
       if (!thumbnailURL) return []
       const id = createID(thumbnailURL)
+
+      if (filter !== 'all') {
+        const categories = WallpaperCategories.safeParse(
+          parseJSON($wallpaper.attr('data-categories'))
+        )
+        if (!categories.success || !categories.data.includes(filter)) return []
+      }
 
       const detail = WallpaperDetail.safeParse(
         parseJSON($wallpaper.attr('data-detail'))
@@ -269,7 +290,7 @@ const downloadNewWallpapers = async (
   }
 }
 
-const wallpapers = await scrape(options.size)
+const wallpapers = await scrape(options.size, options.filter)
 const distFiles = await loadDest(options.dest)
 
 downloadNewWallpapers(
