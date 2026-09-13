@@ -1,6 +1,6 @@
 # ConoHa Wallpaper Scraper
 
-[美雲このはの壁紙](https://conoha.mikumo.com/wallpaper/)を特定ディレクトリにダウンロードするスクリプトです。
+[美雲このはの壁紙](https://conoha.mikumo.com/special/wallpaper/)を特定ディレクトリにダウンロードするスクリプトです。
 各種OSの壁紙のスライドショー機能と組み合わせて、美雲このはのスライドショーを壁紙に設定できます。
 
 > [!CAUTION]
@@ -32,11 +32,11 @@ wget -O - https://github.com/mazrean/conoha-wallpaper-scraper/releases/latest/do
 その他、以下のようなオプションが利用できます。
 ```txt
 Options:
-  --size <1080x1920|1242x2688|2560x1440|1280x800>  Size of wallpaper (default: "2560x1440")
-  -d, --dest <destination directory>               Destination directory (default: "dest")
-  --ignore-file <ignore list>                      Ignore list file path(default: ignore.txt)
-  --dry-run                                        Dry run (default: false)
-  -h, --help                                       display help for command
+  --size <1080x1920|1242x2688|1280x800|2560x1440|1080x2400|1290x2796|2560x1600>  Size of wallpaper (default: "2560x1440")
+  -d, --dest <destination directory>                                             Destination directory (default: "dest")
+  --ignore-file <ignore list>                                                    Ignore list file path(default: ignore.txt)
+  --dry-run                                                                      Dry run (default: false)
+  -h, --help                                                                     display help for command
 ```
 
 ## ダウンロードしない壁紙の指定
