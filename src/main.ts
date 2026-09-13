@@ -3,14 +3,24 @@ import https from 'https'
 import { program } from 'commander'
 import { z } from 'zod'
 import * as cheerio from 'cheerio'
-import { Client } from 'undici'
 import { createWriteStream } from 'fs'
 import path from 'path'
+import type { IncomingMessage } from 'http'
+
+const baseURL = 'https://conoha.mikumo.com'
+const wallpaperPath = '/special/wallpaper/'
+const userAgent =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
 
 program.option(
-  '--size <1080x1920|1242x2688|2560x1440|1280x800>',
+  '--size <1080x1920|1242x2688|1280x800|2560x1440|1080x2400|1290x2796|2560x1600>',
   'Size of wallpaper',
   '2560x1440'
+)
+program.option(
+  '--filter <all|springsummer|fallwinter|uniform|conohapiba|anzu>',
+  'Category of wallpaper',
+  'all'
 )
 program.option(
   '-d, --dest <destination directory>',
@@ -25,10 +35,26 @@ program.option('--dry-run', 'Dry run', false)
 program.parse()
 
 const Size = z
-  .enum(['1080x1920', '1242x2688', '2560x1440', '1280x800'])
+  .enum([
+    '1080x1920',
+    '1242x2688',
+    '1280x800',
+    '2560x1440',
+    '1080x2400',
+    '1290x2796',
+    '2560x1600'
+  ])
   .default('2560x1440')
+type Size = z.infer<typeof Size>
+
+const Filter = z
+  .enum(['all', 'springsummer', 'fallwinter', 'uniform', 'conohapiba', 'anzu'])
+  .default('all')
+type Filter = z.infer<typeof Filter>
+
 const Option = z.object({
   size: Size,
+  filter: Filter,
   dest: z.string().default('dest'),
   ignoreFile: z.string().default('./ignore.txt'),
   dryRun: z.boolean().default(false)
@@ -47,76 +73,119 @@ type Wallpaper = {
   url: string
 }
 
-const scrape = async (size: z.infer<typeof Size>) => {
-  // 中間証明書が設定されておらずTLSでエラーが発生するため、
-  // rejectUnauthorized: falseで証明書検証を無効化
-  const client = new Client('https://conoha.mikumo.com', {
-    connect: {
-      rejectUnauthorized: false
-    }
+// 壁紙一覧の各要素が持つdata-detailの中身(サイズ名 -> 画像情報)
+// あんず一押し壁紙のようにwidth/heightを持たない要素もあるため、urlのみ必須とする
+const WallpaperDetail = z.record(
+  z.string(),
+  z.object({
+    url: z.string()
   })
+)
+
+// 壁紙一覧の各要素が持つdata-categoriesの中身
+const WallpaperCategories = z.array(z.string())
+
+const parseJSON = (value: string | undefined): unknown => {
+  if (!value) return undefined
 
   try {
-    const { statusCode, body } = await client.request({
-      path: '/wallpaper/',
-      method: 'GET'
-    })
-
-    if (statusCode !== 200) {
-      throw new Error(`Failed to fetch: ${statusCode}`)
-    }
-
-    const chunks: Uint8Array[] = []
-    for await (const chunk of body) {
-      chunks.push(chunk)
-    }
-
-    const html = Buffer.concat(chunks).toString('utf-8')
-    const $ = cheerio.load(html)
-
-    const createID = (thumbnailURL: string) =>
-      thumbnailURL
-        .replace(/^(https:\/\/conoha\.mikumo\.com\/wp-content\/uploads\/)/, '')
-        .replace(/(\.jpg)$/, '')
-        .replace('/thumbnail', '')
-        .replace('-thumbnail', '')
-        .replace(/(-thumb)$/, '')
-        .replaceAll('/', '-')
-
-    const wallpapers = $('.listWallpaper_item')
-      .toArray()
-      .map(wallpaper => {
-        const $wallpaper = $(wallpaper)
-
-        const thumbnailUrl = $wallpaper.find('img').attr('src')
-        if (!thumbnailUrl) return
-        const id = createID(thumbnailUrl)
-
-        const wallpaperUrls = $wallpaper
-          .find('a')
-          .toArray()
-          .map(a => $(a).attr('href') ?? '')
-          .filter(
-            href =>
-              href &&
-              (href.includes(size) || href.includes(size.replace('x', '_')))
-          )
-        if (wallpaperUrls.length === 0) return
-
-        return {
-          id,
-          url: wallpaperUrls[0]
-        }
-      })
-      .filter(
-        wallpaper =>
-          wallpaper && Object.values(wallpaper).some(value => value !== null)
-      ) as Wallpaper[]
-
-    return wallpapers
-  } finally {
-    client.close()
+    return JSON.parse(value)
+  } catch {
+    return undefined
   }
+}
+
+const request = (uri: string) =>
+  new Promise<IncomingMessage>((resolve, reject) => {
+    https
+      .get(
+        uri,
+        {
+          // 以前、中間証明書が設定されておらずTLSでエラーが発生していたため、
+          // 互換性のためrejectUnauthorized: falseで証明書検証を無効化している
+          rejectUnauthorized: false,
+          headers: {
+            'User-Agent': userAgent
+          }
+        },
+        res => {
+          if (res.statusCode !== 200) {
+            res.resume()
+            reject(new Error(`Failed to fetch ${uri}: ${res.statusCode}`))
+            return
+          }
+
+          resolve(res)
+        }
+      )
+      .on('error', reject)
+  })
+
+const fetchText = async (uri: string) => {
+  const res = await request(uri)
+
+  const chunks: Uint8Array[] = []
+  for await (const chunk of res) {
+    chunks.push(chunk)
+  }
+
+  return Buffer.concat(chunks).toString('utf-8')
+}
+
+const scrape = async (size: Size, filter: Filter) => {
+  const html = await fetchText(new URL(wallpaperPath, baseURL).href)
+  const $ = cheerio.load(html)
+
+  // data-detailのキーは2560_1440のように区切りが_になっている
+  const sizeKey = size.replace('x', '_')
+
+  const createID = (thumbnailURL: string) =>
+    decodeURIComponent(new URL(thumbnailURL, baseURL).pathname)
+      .replace(/^\/(wp-content\/uploads|special\/wallpaper\/images)\//, '')
+      .replace(/(\.jpg)$/, '')
+      .replace('/thumbnail', '')
+      .replace('-thumbnail', '')
+      .replace(/(-thumb)$/, '')
+      .replace(/\/サムネイル(_\d+×\d+)?/, '')
+      .replaceAll('/', '-')
+
+  return $('.js-wallpaper_listItem')
+    .toArray()
+    .flatMap<Wallpaper>(element => {
+      const $wallpaper = $(element)
+
+      const thumbnailURL = $wallpaper.attr('data-thumbnail')
+      if (!thumbnailURL) return []
+      const id = createID(thumbnailURL)
+
+      if (filter !== 'all') {
+        const categories = WallpaperCategories.safeParse(
+          parseJSON($wallpaper.attr('data-categories'))
+        )
+        if (!categories.success || !categories.data.includes(filter)) return []
+      }
+
+      const detail = WallpaperDetail.safeParse(
+        parseJSON($wallpaper.attr('data-detail'))
+      )
+      if (!detail.success) {
+        console.warn(`Skip ${id}: failed to parse wallpaper detail`)
+        return []
+      }
+
+      const image = detail.data[sizeKey]
+      if (!image) {
+        console.warn(`Skip ${id}: ${size} is not available`)
+        return []
+      }
+
+      return [
+        {
+          id,
+          url: new URL(image.url, baseURL).href
+        }
+      ]
+    })
 }
 
 const loadDest = async (dest: string) => {
@@ -172,29 +241,14 @@ const loadIgnoreList = async (ignoreFile: string, wallpapers: Wallpaper[]) => {
   }
 }
 
-const download = (uri: string, filename: string) => {
-  return new Promise<void>((resolve, reject) => {
-    const url = new URL(uri)
-    return https
-      .request(
-        {
-          ...url,
-          hostname: url.host,
-          path: url.pathname,
-          rejectUnauthorized: false,
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-          }
-        },
-        res => {
-          res
-            .pipe(createWriteStream(filename))
-            .on('close', resolve)
-            .on('error', reject)
-        }
-      )
-      .end()
+const download = async (uri: string, filename: string) => {
+  const res = await request(uri)
+
+  await new Promise<void>((resolve, reject) => {
+    res
+      .pipe(createWriteStream(filename))
+      .on('close', resolve)
+      .on('error', reject)
   })
 }
 
@@ -226,12 +280,17 @@ const downloadNewWallpapers = async (
     console.log(`Download: ${id}(${url}) -> ${filePath}`)
     if (options.dryRun) continue
 
-    await download(url, filePath)
+    try {
+      await download(url, filePath)
+    } catch (err) {
+      // 1つの壁紙のダウンロードに失敗しても、残りのダウンロードは継続する
+      console.error(`Failed to download ${id}: ${String(err)}`)
+    }
     await sleep(500)
   }
 }
 
-const wallpapers = await scrape(options.size)
+const wallpapers = await scrape(options.size, options.filter)
 const distFiles = await loadDest(options.dest)
 
 downloadNewWallpapers(
